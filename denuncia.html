@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Página de Denúncia</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCFvc0jdHgleTOb5kf-G6Wb4TLfNcbC1ms&libraries=places" async defer></script>
+  <style>
+    body {
+      background: #f8f9fa;
+    }
+    .header {
+      background-color: #007bff;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+    #map {
+      height: 400px;
+      width: 100%;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+      margin-bottom: 15px;
+    }
+    .form-container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    .btn-voltar {
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Cabeçalho -->
+  <div class="header">
+    <h2>Registro de Denúncia</h2>
+  </div>
+
+  <!-- Conteúdo -->
+  <div class="container">
+    <a href="painel.html" class="btn btn-secondary btn-voltar">&larr; Voltar ao Painel</a>
+    <div class="form-container">
+      <!-- Formulário de Denúncia -->
+      <form id="denunciaForm">
+        <div class="mb-3">
+          <label for="descricao" class="form-label">Descrição</label>
+          <textarea class="form-control" id="descricao" rows="3" required></textarea>
+        </div>
+        <div class="mb-3">
+          <label for="rua" class="form-label">Rua</label>
+          <input type="text" class="form-control" id="rua" required>
+        </div>
+        <div class="mb-3">
+          <label for="numero" class="form-label">Número</label>
+          <input type="text" class="form-control" id="numero" required>
+        </div>
+        <div class="mb-3">
+          <label for="bairro" class="form-label">Bairro</label>
+          <input type="text" class="form-control" id="bairro" required>
+        </div>
+        <div class="mb-3">
+          <label for="cidade" class="form-label">Cidade</label>
+          <input type="text" class="form-control" id="cidade" required>
+        </div>
+        <div class="mb-3">
+          <label for="estado" class="form-label">Estado</label>
+          <input type="text" class="form-control" id="estado" required>
+        </div>
+        
+        <!-- Mapa -->
+        <div class="mb-3">
+          <label for="localizacao" class="form-label">Localização</label>
+          <div id="map"></div>
+          <input type="text" id="localizacao" class="form-control mt-2" readonly>
+        </div>
+        
+        <button type="submit" class="btn btn-primary w-100">Registrar Denúncia</button>
+      </form>
+    </div>
+  </div>
+
+
+  <script>
+    let map, marker;
+
+    // Função para inicializar o mapa
+    function initMap() {
+      const initialPos = { lat: -23.55052, lng: -46.633308 }; // São Paulo como exemplo
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: initialPos,
+        zoom: 15,
+      });
+
+      marker = new google.maps.Marker({
+        position: initialPos,
+        map: map,
+        draggable: true,
+      });
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const userPos = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            };
+            marker.setPosition(userPos);
+            map.setCenter(userPos);
+            document.getElementById("localizacao").value = `Lat: ${userPos.lat}, Lng: ${userPos.lng}`;
+          },
+          () => console.log("Não foi possível obter sua localização.")
+        );
+      }
+
+      google.maps.event.addListener(marker, 'dragend', function () {
+        const pos = marker.getPosition();
+        document.getElementById("localizacao").value = `Lat: ${pos.lat()}, Lng: ${pos.lng()}`;
+        geocodePosition(pos);
+      });
+    }
+
+    function geocodePosition(position) {
+  const geocoder = new google.maps.Geocoder();
+
+  geocoder.geocode({ location: position }, (results, status) => {
+    if (status === 'OK' && results[0]) {
+      const addressComponents = results[0].address_components;
+
+      // Reseta os campos
+      document.getElementById("rua").value = '';
+      document.getElementById("numero").value = '';
+      document.getElementById("bairro").value = '';
+      document.getElementById("cidade").value = '';
+      document.getElementById("estado").value = '';
+
+      // Itera pelos componentes do endereço
+      addressComponents.forEach((component) => {
+        const types = component.types;
+
+        if (types.includes('route')) {
+          document.getElementById("rua").value = component.long_name; // Rua
+        }
+        if (types.includes('street_number')) {
+          document.getElementById("numero").value = component.long_name; // Número
+        }
+        if (types.includes('sublocality') || types.includes('sublocality_level_1')) {
+          document.getElementById("bairro").value = component.long_name; // Bairro
+        }
+        if (types.includes('locality')) {
+          document.getElementById("cidade").value = component.long_name; // Cidade
+        } else if (types.includes('administrative_area_level_2') && !document.getElementById("cidade").value) {
+          // Fallback: tenta buscar a cidade no nível administrativo secundário (caso o tipo locality não esteja presente)
+          document.getElementById("cidade").value = component.long_name;
+        }
+        if (types.includes('administrative_area_level_1')) {
+          document.getElementById("estado").value = component.short_name; // Estado
+        }
+      });
+
+      // Verifica se a cidade foi preenchida; caso contrário, exibe um aviso
+      if (!document.getElementById("cidade").value) {
+        console.warn("Não foi possível determinar a cidade.");
+        alert("Não conseguimos preencher a cidade automaticamente. Por favor, insira-a manualmente.");
+      }
+    } else {
+      alert("Não foi possível determinar o endereço.");
+    }
+  });
+}
+
+
+document.getElementById("denunciaForm").addEventListener("submit", function (event) {
+    event.preventDefault();
+
+    const usuarioId = localStorage.getItem("usuarioId");
+console.log("Usuario ID no localStorage:", usuarioId); // Verifique o valor aqui
+  // Verifica se o usuarioId está no localStorage
+    if (!usuarioId) {
+        alert("Usuário não autenticado. Faça login para registrar uma denúncia.");
+        return;
+    }
+
+    const denuncia = {
+        usuarioId: usuarioId, // Pegando do localStorage
+        descricao: document.getElementById("descricao").value,
+        rua: document.getElementById("rua").value,
+        bairro: document.getElementById("bairro").value,
+        cidade: document.getElementById("cidade").value,
+        estado: document.getElementById("estado").value,
+        numero: document.getElementById("numero").value,
+        localizacao: document.getElementById("localizacao").value
+    };
+
+    fetch('http://localhost:3000/api/denuncias', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(denuncia),
+    })
+    .then((response) => response.json())
+    .then((data) => {
+        alert("Denúncia registrada com sucesso!");
+        location.reload();
+    })
+    .catch((error) => alert("Erro ao registrar a denúncia. Tente novamente."));
+});
+
+
+    window.onload = initMap;
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

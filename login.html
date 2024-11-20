@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    body {
+      background-size: cover;
+      color: #000000;
+    }
+    .overlay {
+      background: rgba(0, 0, 0, 0.7);
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+    .form-container {
+      background: rgba(255, 255, 255, 0.9);
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay"></div>
+
+  <!-- Formulário de Login -->
+  <div class="container d-flex justify-content-center align-items-center vh-100">
+    <div class="form-container col-md-4">
+      <h2>Login</h2>
+      <form id="formLogin">
+        <div class="form-group">
+          <label for="email">Email:</label>
+          <input type="email" class="form-control" id="email" placeholder="Digite seu email" required>
+        </div>
+        <div class="form-group mt-3">
+          <label for="senha">Senha:</label>
+          <input type="password" class="form-control" id="senha" placeholder="Digite sua senha" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block mt-4">Entrar</button>
+      </form>
+      <p class="text-center mt-3">
+        Não tem uma conta? <a href="cadastro.html" class="text-primary">Cadastre-se</a>.
+      </p>
+    </div>
+  </div>
+
+
+
+  <script>
+    document.getElementById('formLogin').addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const email = document.getElementById('email').value;
+      const senha = document.getElementById('senha').value;
+
+      try {
+        const response = await fetch('http://localhost:3000/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, senha }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          // Salva o tipo de usuário e o e-mail no localStorage
+          localStorage.setItem('userType', result.tipo === 'admin' ? 'admin' : 'user');
+          localStorage.setItem('userEmail', email); // Salva o e-mail do usuário
+          localStorage.setItem('usuarioId', result.usuario_id);  // Corrigido para acessar result.usuario_id
+
+          // Redireciona para a página correspondente
+          window.location.href = result.tipo === 'admin' ? 'admin.html' : 'painel.html';
+        } else {
+          alert(result.error || 'Credenciais inválidas.');
+        }
+      } catch (error) {
+        console.error('Erro ao fazer login:', error);
+        alert('Erro no servidor. Tente novamente mais tarde.');
+      }
+    });
+  </script>
+</body>
+</html>

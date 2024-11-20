@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadastro</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body {
+      background-size: cover;
+      color: #111111;
+    }
+    .overlay {
+      background: rgba(0, 0, 0, 0.7);
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+    .form-container {
+      background: rgba(255, 255, 255, 0.9);
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay"></div>
+  
+  <!-- Formulário de Cadastro -->
+  <div class="container d-flex justify-content-center align-items-center vh-100">
+    <div class="form-container col-md-6">
+      <h2>Cadastro de Usuário</h2>
+      <form id="formCadastro">
+        <div class="form-group">
+          <label for="nome">Nome:</label>
+          <input type="text" class="form-control" id="nome" placeholder="Digite seu nome completo" required>
+        </div>
+        <div class="form-group">
+          <label for="email">Email:</label>
+          <input type="email" class="form-control" id="email" placeholder="Digite seu email" required>
+        </div>
+        <div class="form-group">
+          <label for="telefone">Telefone:</label>
+          <input type="tel" class="form-control" id="telefone" placeholder="Digite seu telefone" required>
+        </div>
+        <div class="form-group">
+          <label for="senha">Senha:</label>
+          <input type="password" class="form-control" id="senha" placeholder="Crie uma senha segura" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Cadastrar</button>
+      </form>
+      <p class="text-center mt-3">
+        Já tem uma conta? <a href="login.html" class="text-primary">Faça login</a>.
+      </p>
+    </div>
+  </div>
+
+
+  <script src="js/api.js"></script>
+  <script>
+    document.getElementById('formCadastro').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const nome = document.getElementById('nome').value;
+      const email = document.getElementById('email').value;
+      const telefone = document.getElementById('telefone').value;
+      const senha = document.getElementById('senha').value;
+
+      // Envia os dados de cadastro para o backend
+      const response = await fetch(`http://localhost:3000/api/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, email, telefone, senha })
+      });
+
+      if (response.ok) {
+        alert('Usuário cadastrado com sucesso!');
+        window.location.href = 'login.html'; // Redireciona para a tela de login após o cadastro
+      } else {
+        alert('Erro ao cadastrar. Tente novamente.');
+      }
+    });
+  </script>
+</body>
+</html>

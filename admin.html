@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Painel de Controle</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCFvc0jdHgleTOb5kf-G6Wb4TLfNcbC1ms&libraries=visualization"></script>
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .navbar {
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      color: #343a40;
+    }
+    .table {
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    #map {
+      height: 400px;
+      width: 100%;
+    }
+    #chart-container {
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Sistema de Denúncias</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="login.html">Sair</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Conteúdo -->
+  <div class="container mt-4">
+    <h1 class="text-center">Painel de Controle do Administrador</h1>
+
+    <!-- Gráfico e Mapa -->
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <h2 class="text-center">Gráfico de Denúncias</h2>
+        <div id="chart-container">
+          <canvas id="statusChart"></canvas>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <h2 class="text-center">Mapa de Calor</h2>
+        <div id="map"></div>
+      </div>
+    </div>
+
+    <!-- Lista de Denúncias -->
+    <h2 class="text-center">Lista de Denúncias</h2>
+    <table class="table table-striped table-bordered">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Descrição</th>
+          <th>Endereço</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="denuncias-list">
+        <!-- Conteúdo gerado dinamicamente -->
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    $(document).ready(function () {
+      const userType = localStorage.getItem('userType');
+      const userEmail = localStorage.getItem('userEmail');
+
+      // Verificar se o usuário é admin
+      if (userType !== 'admin') {
+        alert('Acesso negado! Apenas administradores podem acessar esta página.');
+        window.location.href = 'login.html';
+        return;
+      }
+
+      carregarDenuncias();
+      carregarMapaDeCalor();
+      carregarGrafico();
+
+      // Carregar denúncias
+      function carregarDenuncias() {
+        $.ajax({
+          url: 'http://localhost:3000/api/denuncias',
+          method: 'GET',
+          data: { tipo: 'administrador' },
+          success: function (response) {
+            let html = '';
+            response.forEach(denuncia => {
+              html += `
+                <tr>
+                  <td>${denuncia.id}</td>
+                  <td>${denuncia.descricao}</td>
+                  <td>${denuncia.rua}, ${denuncia.numero}, ${denuncia.bairro}, ${denuncia.cidade} - ${denuncia.estado}</td>
+                  <td>
+                    <select class="form-select" onchange="alterarStatus(${denuncia.id}, this.value)">
+                      <option value="pendente" ${denuncia.status === 'pendente' ? 'selected' : ''}>Pendente</option>
+                      <option value="em análise" ${denuncia.status === 'em análise' ? 'selected' : ''}>Em Análise</option>
+                      <option value="concluído" ${denuncia.status === 'concluído' ? 'selected' : ''}>Concluído</option>
+                    </select>
+                  </td>
+                  <td>
+                    <button class="btn btn-danger" onclick="excluirDenuncia(${denuncia.id})">Excluir</button>
+                  </td>
+                </tr>`;
+            });
+            $('#denuncias-list').html(html);
+          },
+          error: function () {
+            alert('Erro ao carregar denúncias!');
+          }
+        });
+      }
+
+      // Alterar status
+      window.alterarStatus = function (id, status) {
+        $.ajax({
+          url: `http://localhost:3000/api/denuncias/${id}/status`,
+          method: 'PUT',
+          contentType: 'application/json',
+          data: JSON.stringify({ status, email: userEmail }),
+          success: function () {
+            alert('Status alterado com sucesso!');
+            carregarDenuncias();
+          },
+          error: function () {
+            alert('Erro ao alterar o status!');
+          }
+        });
+      };
+
+      // Excluir denúncia
+      window.excluirDenuncia = function (id) {
+        if (confirm('Tem certeza de que deseja excluir esta denúncia?')) {
+          $.ajax({
+            url: `http://localhost:3000/api/denuncias/${id}`,
+            method: 'DELETE',
+            contentType: 'application/json',
+            data: JSON.stringify({ email: userEmail }),
+            success: function () {
+              alert('Denúncia excluída com sucesso!');
+              carregarDenuncias();
+            },
+            error: function () {
+              alert('Erro ao excluir a denúncia!');
+            }
+          });
+        }
+      };
+
+      // Carregar mapa de calor
+      function carregarMapaDeCalor() {
+        $.ajax({
+          url: 'http://localhost:3000/api/denuncias/coordenadas',
+          method: 'GET',
+          success: function (coordenadas) {
+            const map = new google.maps.Map(document.getElementById('map'), {
+              zoom: 6,
+              center: { lat: -14.6, lng: -57.4 },
+            });
+            const heatmapData = coordenadas.map(coord => new google.maps.LatLng(coord.latitude, coord.longitude));
+            new google.maps.visualization.HeatmapLayer({
+              data: heatmapData,
+              map: map,
+            });
+          },
+          error: function () {
+            alert('Erro ao carregar mapa de calor!');
+          }
+        });
+      }
+
+      // Carregar gráfico
+      function carregarGrafico() {
+        $.ajax({
+          url: 'http://localhost:3000/api/denuncias/status',
+          method: 'GET',
+          success: function (data) {
+            const labels = data.map(item => item.status);
+            const valores = data.map(item => item.quantidade);
+            new Chart(document.getElementById('statusChart'), {
+              type: 'bar',
+              data: {
+                labels,
+                datasets: [{
+                  label: 'Quantidade de Denúncias',
+                  data: valores,
+                  backgroundColor: ['rgba(255,99,132,0.2)', 'rgba(54,162,235,0.2)', 'rgba(255,206,86,0.2)'],
+                  borderColor: ['rgba(255,99,132,1)', 'rgba(54,162,235,1)', 'rgba(255,206,86,1)'],
+                  borderWidth: 1,
+                }]
+              }
+            });
+          },
+          error: function () {
+            alert('Erro ao carregar gráfico!');
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>
